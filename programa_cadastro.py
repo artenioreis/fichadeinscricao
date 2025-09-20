@@ -25,41 +25,39 @@ class AppCadastro(tk.Tk):
     def __init__(self):
         super().__init__()
         
+        try:
+            self.icon_img = tk.PhotoImage(file='logo.png')
+            self.iconphoto(False, self.icon_img)
+        except tk.TclError:
+            print("Não foi possível carregar a logo como ícone.")
+
         self.db_conn = self.setup_database()
         self.title("Sistema de Cadastro de Alunos")
         self.state('zoomed') 
         self.apply_professional_theme()
 
+        # --- MODIFICAÇÃO: ESTRUTURA PRINCIPAL RESPONSIVA ---
+        # A janela principal agora tem sua coluna 0 configurada para expandir
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1) # Permite que a lista de alunos expanda
+
         top_frame = ttk.Frame(self, style='Main.TFrame')
-        top_frame.pack(side='top', fill='x', padx=10, pady=5)
-        
+        top_frame.grid(row=0, column=0, sticky='ew', padx=10, pady=5)
+        top_frame.grid_columnconfigure(0, weight=1) # Permite que o container do formulário expanda
+
         bottom_frame = ttk.Frame(self, style='Main.TFrame')
-        bottom_frame.pack(side='bottom', fill='both', expand=True, padx=10, pady=5)
+        bottom_frame.grid(row=1, column=0, sticky='nsew', padx=10, pady=5)
 
-        try:
-            logo_img = Image.open("logo.png").resize((120, 80), Image.Resampling.LANCZOS)
-            self.logo = ImageTk.PhotoImage(logo_img)
-            ttk.Label(top_frame, image=self.logo, style='Main.TLabel').pack(side='left', padx=10, anchor='nw')
-        except FileNotFoundError:
-            pass
+        self.create_search_widgets(top_frame)
 
-        form_container = ttk.Frame(top_frame, style='Main.TFrame')
-        form_container.pack(side='left', fill='x', expand=True, padx=20)
-        
-        self.create_search_widgets(form_container)
-
-        self.canvas = tk.Canvas(form_container, highlightthickness=0, height=380)
-        scrollbar = ttk.Scrollbar(form_container, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = ttk.Frame(self.canvas, style='Main.TFrame')
-        self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=scrollbar.set)
-        
-        self.canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        main_form_frame = ttk.Frame(top_frame, style='Main.TFrame')
+        main_form_frame.grid(row=1, column=0, sticky='ew', pady=(10,0))
+        # Configuração de peso para as colunas do formulário
+        main_form_frame.grid_columnconfigure(0, weight=1)
+        main_form_frame.grid_columnconfigure(1, weight=1)
         
         self.widgets = {}
-        self.create_form_widgets(self.scrollable_frame)
+        self.create_form_widgets(main_form_frame)
         self.create_student_list_widgets(bottom_frame)
         
         self.limpar_campos()
@@ -130,7 +128,7 @@ class AppCadastro(tk.Tk):
 
     def create_search_widgets(self, parent):
         search_frame = ttk.LabelFrame(parent, text="Buscar Cadastro", padding="10")
-        search_frame.pack(fill="x", padx=0, pady=(5,10))
+        search_frame.grid(row=0, column=0, sticky='ew')
         ttk.Label(search_frame, text="Buscar por Código:").pack(side='left', padx=(0, 5))
         self.busca_codigo_entry = ttk.Entry(search_frame, width=15)
         self.busca_codigo_entry.pack(side='left', padx=5)
@@ -148,44 +146,103 @@ class AppCadastro(tk.Tk):
         self.tree.bind('<<TreeviewSelect>>', self.carregar_aluno_da_lista)
 
     def create_form_widgets(self, parent):
+        left_column = ttk.Frame(parent, style='Main.TFrame')
+        left_column.grid(row=0, column=0, sticky='new', padx=(0, 10))
+        
+        right_column = ttk.Frame(parent, style='Main.TFrame')
+        right_column.grid(row=0, column=1, sticky='new')
+
+        # Permite que as colunas dentro dos frames se expandam
+        left_column.grid_columnconfigure(0, weight=1)
+        right_column.grid_columnconfigure(0, weight=1)
+
         combobox_options = {"area": ["Setor Cultural", "Setor Profissionalizante"], "curso": ["Violão", "Capoeira", "Corte e Costura", "Manicure", "Teatro", "Cabelereiro"], "sexo": ["Masculino", "Feminino", "Outros"], "estado_civil": ["Solteiro(a)", "Casado(a)", "Divorciado(a)", "Viúvo(a)", "União Estável"], "frequenta_escola": ["Sim", "Não"], "ensino": ["Infantil", "Fundamental", "Médio", "Profissional e Tecnológica", "Superior"], "trabalha": ["Sim", "Não"], "beneficio_gov": ["Sim", "Não"]}
+        
         frame_configs = {
             "Ficha de Inscrição": [("Código:", "codigo", "entry", True, 10), ("Data da Inscrição:", "data_inscricao", "entry", True, 12), ("Área:", "area", "combo", False, 18),("Nome Completo:", "nome_completo", "entry", False, 35, 3), ("Curso:", "curso", "combo", False, 18), ("Sexo:", "sexo", "combo", False, 15), ("Data de Nascimento:", "data_nascimento", "entry", False, 18), ("Idade:", "idade", "entry", True, 10), ("CPF:", "cpf", "entry", False, 15), ("Estado Civil:", "estado_civil", "combo", False, 18), ("CEP:", "cep", "entry", False, 10), ("Rua:", "rua", "entry", False, 35, 3), ("N°:", "numero", "entry", False, 8), ("Complemento:", "complemento", "entry", False, 20, 3), ("Ponto de Referência:", "ponto_referencia", "entry", False, 35, 3), ("Contato 1:", "contato1", "entry", False, 15), ("Contato 2:", "contato2", "entry", False, 15)],
-            "Dados Escolares": [("Escola:", "escola", "entry", False, 40, 3), ("Frequenta?", "frequenta_escola", "combo", False, 8), ("Série:", "serie", "entry", False, 20), ("Ensino:", "ensino", "combo", False, 25), ("Trabalha?", "trabalha", "combo", False, 8), ("Profissão:", "profissao", "entry", False, 27), ("Renda Mensal (R$):", "renda_mensal", "entry", False, 15)],
             "Dados da Residência": [("Nome do Pai:", "nome_pai", "entry", False, 40, 3), ("Nome da Mãe:", "nome_mae", "entry", False, 40, 3),("N° de irmãos:", "num_irmaos", "entry", False, 5), ("Pessoas na residência:", "pessoas_residencia", "entry", False, 5), ("Nome do Cônjuge:", "nome_conjuge", "entry", False, 40, 3), ("Renda do Cônjuge (R$):", "renda_conjuge", "entry", False, 15),("N° de filhos:", "num_filhos", "entry", False, 5), ("Renda Familiar (R$):", "renda_familiar", "entry", False, 15),("Recebe benefício?", "beneficio_gov", "combo", False, 8), ("Qual benefício?", "qual_beneficio", "entry", False, 40, 3)]
         }
-        for title, fields in frame_configs.items():
-            frame = ttk.LabelFrame(parent, text=title, padding="10"); frame.pack(fill="x", padx=10, pady=(0,5), expand=True)
+        
+        def create_fields(parent_frame, fields):
+            # Configura as colunas do grid para serem responsivas
+            parent_frame.grid_columnconfigure(1, weight=1)
+            parent_frame.grid_columnconfigure(3, weight=1)
+            parent_frame.grid_columnconfigure(5, weight=1)
+
             row, col = 0, 0
             for label, key, type, readonly, width, *span in fields:
-                ttk.Label(frame, text=label).grid(row=row, column=col, sticky="w", padx=5, pady=2)
-                widget = ttk.Combobox(frame, values=combobox_options.get(key, []), width=width) if type == "combo" else ttk.Entry(frame, width=width)
+                ttk.Label(parent_frame, text=label).grid(row=row, column=col, sticky="w", padx=5, pady=2)
+                widget = ttk.Combobox(parent_frame, values=combobox_options.get(key, []), width=width) if type == "combo" else ttk.Entry(parent_frame, width=width)
                 self.widgets[key] = widget
-                colspan = span[0] if span else 1; widget.grid(row=row, column=col + 1, sticky="we", padx=5, pady=2, columnspan=colspan)
+                colspan = span[0] if span else 1
+                widget.grid(row=row, column=col + 1, sticky="we", padx=5, pady=2, columnspan=colspan)
                 if readonly: widget.config(state="readonly")
-                col += (1 + colspan);
+                col += (1 + colspan)
                 if col >= 6: col = 0; row += 1
+
+        frame_ficha = ttk.LabelFrame(left_column, text="Ficha de Inscrição", padding="10")
+        frame_ficha.grid(row=0, column=0, sticky='ew')
+        create_fields(frame_ficha, frame_configs["Ficha de Inscrição"])
         self.widgets["data_nascimento"].bind("<FocusOut>", self.calcular_idade)
-        frame3 = next(f for f in parent.winfo_children() if isinstance(f, ttk.LabelFrame) and f.cget('text') == "Dados da Residência")
+
+        frame_residencia = ttk.LabelFrame(left_column, text="Dados da Residência", padding="10")
+        frame_residencia.grid(row=1, column=0, sticky='ew', pady=5)
+        create_fields(frame_residencia, frame_configs["Dados da Residência"])
+        
+        frame_residencia.grid_columnconfigure(1, weight=1)
         check_fields = [("Mora só com os pais", "mora_pais"), ("Mora com mãe/pai", "mora_mae_pai"), ("Mora com parentes", "mora_parentes"), ("Mora com cônjuge", "mora_conjuge")]
-        for i, (text, key) in enumerate(check_fields): self.widgets[key] = tk.BooleanVar(); ttk.Checkbutton(frame3, text=text, variable=self.widgets[key]).grid(row=i + 5, column=0, columnspan=2, sticky='w', padx=5)
-        ttk.Label(frame3, text="Descrição Familiar:").grid(row=len(check_fields)+5, column=0, sticky="nw", padx=5, pady=2)
-        self.widgets['desc_familiar'] = tk.Text(frame3, height=3, width=80, bg="#FFFFFF", fg="#333333", relief="solid", borderwidth=1); self.widgets['desc_familiar'].grid(row=len(check_fields)+5, column=1, columnspan=4, sticky="w", padx=5, pady=2)
-        frame_curso = ttk.LabelFrame(parent, text="Datas do Curso", padding="10"); frame_curso.pack(fill="x", padx=10, pady=5, expand=True)
-        ttk.Label(frame_curso, text="Data de Início:").grid(row=0, column=0, sticky="w", padx=5, pady=2); self.widgets['data_inicio_curso'] = ttk.Entry(frame_curso, width=15); self.widgets['data_inicio_curso'].grid(row=0, column=1, sticky="w", padx=5, pady=2)
-        ttk.Label(frame_curso, text="Data de Conclusão:").grid(row=0, column=2, sticky="w", padx=5, pady=2); self.widgets['data_conclusao_curso'] = ttk.Entry(frame_curso, width=15); self.widgets['data_conclusao_curso'].grid(row=0, column=3, sticky="w", padx=5, pady=2)
-        ttk.Label(frame_curso, text="Desistência:").grid(row=0, column=4, sticky="w", padx=5, pady=2); self.widgets['desistencia'] = ttk.Entry(frame_curso, width=30); self.widgets['desistencia'].grid(row=0, column=5, sticky="w", padx=5, pady=2)
-        doc_frame = ttk.LabelFrame(parent, text="Documentos Entregues", padding="10"); doc_frame.pack(fill="x", padx=10, pady=5, expand=True)
+        for i, (text, key) in enumerate(check_fields): 
+            self.widgets[key] = tk.BooleanVar()
+            ttk.Checkbutton(frame_residencia, text=text, variable=self.widgets[key]).grid(row=i + 5, column=0, columnspan=2, sticky='w', padx=5)
+        
+        ttk.Label(frame_residencia, text="Descrição Familiar:").grid(row=len(check_fields)+5, column=0, sticky="nw", padx=5, pady=2)
+        self.widgets['desc_familiar'] = tk.Text(frame_residencia, height=3, width=80, bg="#FFFFFF", fg="#333333", relief="solid", borderwidth=1)
+        self.widgets['desc_familiar'].grid(row=len(check_fields)+5, column=1, columnspan=5, sticky="we", padx=5, pady=2)
+
+        frame_escolares = ttk.LabelFrame(right_column, text="Dados Escolares", padding="10")
+        frame_escolares.grid(row=0, column=0, sticky='ew')
+        frame_escolares.grid_columnconfigure(1, weight=1)
+        frame_escolares.grid_columnconfigure(3, weight=1)
+        
+        ttk.Label(frame_escolares, text="Escola:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        self.widgets['escola'] = ttk.Entry(frame_escolares, width=50)
+        self.widgets['escola'].grid(row=0, column=1, columnspan=3, sticky="we", padx=5, pady=2)
+        ttk.Label(frame_escolares, text="Série:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+        self.widgets['serie'] = ttk.Entry(frame_escolares, width=20)
+        self.widgets['serie'].grid(row=1, column=1, sticky="we", padx=5, pady=2)
+        ttk.Label(frame_escolares, text="Ensino:").grid(row=1, column=2, sticky="w", padx=5, pady=2)
+        self.widgets['ensino'] = ttk.Combobox(frame_escolares, values=combobox_options.get('ensino', []), width=20)
+        self.widgets['ensino'].grid(row=1, column=3, sticky="we", padx=5, pady=2)
+        ttk.Label(frame_escolares, text="Profissão:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
+        self.widgets['profissao'] = ttk.Entry(frame_escolares, width=50)
+        self.widgets['profissao'].grid(row=2, column=1, columnspan=3, sticky="we", padx=5, pady=2)
+        ttk.Label(frame_escolares, text="Trabalha?:").grid(row=3, column=0, sticky="w", padx=5, pady=2)
+        self.widgets['trabalha'] = ttk.Combobox(frame_escolares, values=combobox_options.get('trabalha', []), width=20)
+        self.widgets['trabalha'].grid(row=3, column=1, sticky="we", padx=5, pady=2)
+        ttk.Label(frame_escolares, text="Frequenta Escola?:").grid(row=3, column=2, sticky="w", padx=5, pady=2)
+        self.widgets['frequenta_escola'] = ttk.Combobox(frame_escolares, values=combobox_options.get('frequenta_escola', []), width=20)
+        self.widgets['frequenta_escola'].grid(row=3, column=3, sticky="we", padx=5, pady=2)
+        ttk.Label(frame_escolares, text="Renda Mensal (R$):").grid(row=4, column=0, sticky="w", padx=5, pady=2)
+        self.widgets['renda_mensal'] = ttk.Entry(frame_escolares, width=20)
+        self.widgets['renda_mensal'].grid(row=4, column=1, sticky="we", padx=5, pady=2)
+
+        frame_curso = ttk.LabelFrame(right_column, text="Datas do Curso", padding="10")
+        frame_curso.grid(row=1, column=0, sticky='ew', pady=5)
+        
+        doc_frame = ttk.LabelFrame(right_column, text="Documentos Entregues", padding="10"); doc_frame.grid(row=2, column=0, sticky='ew', pady=5)
         doc_fields = [("Identidade", "doc_id"), ("CPF", "doc_cpf"), ("Residência", "doc_residencia"), ("Vacina", "doc_vacina"), ("Foto 3x4", "doc_foto")]
-        for i, (text, key) in enumerate(doc_fields): self.widgets[key] = tk.BooleanVar(); ttk.Checkbutton(doc_frame, text=text, variable=self.widgets[key]).pack(side='left', padx=10)
-        obs_frame = ttk.LabelFrame(parent, text="Observação", padding="10"); obs_frame.pack(fill="x", padx=10, pady=5, expand=True)
+        for i, (text, key) in enumerate(doc_fields): self.widgets[key] = tk.BooleanVar(); ttk.Checkbutton(doc_frame, text=text, variable=self.widgets[key]).pack(side='left', padx=10, expand=True)
+        
+        obs_frame = ttk.LabelFrame(right_column, text="Observação", padding="10"); obs_frame.grid(row=3, column=0, sticky='ew', pady=5)
         self.widgets['observacao'] = tk.Text(obs_frame, height=3, bg="#FFFFFF", fg="#333333", relief="solid", borderwidth=1); self.widgets['observacao'].pack(fill='x', expand=True, padx=5, pady=5)
-        dec_frame = ttk.LabelFrame(parent, text="Termo de Autorização", padding="10"); dec_frame.pack(fill="x", padx=10, pady=5, expand=True)
+        
+        dec_frame = ttk.LabelFrame(right_column, text="Termo de Autorização", padding="10"); dec_frame.grid(row=4, column=0, sticky='ew', pady=5)
         self.widgets['aceite_declaracao'] = tk.BooleanVar(); ttk.Checkbutton(dec_frame, text="Autorizo o uso de imagem e voz para fins institucionais.", variable=self.widgets['aceite_declaracao']).pack(pady=5, anchor='w')
-        btn_frame = ttk.Frame(parent); btn_frame.pack(fill='x', pady=10, padx=10)
-        ttk.Button(btn_frame, text="Limpar", command=self.limpar_campos).pack(side='left')
-        ttk.Button(btn_frame, text="Salvar", command=self.salvar_cadastro).pack(side='right')
-        ttk.Button(btn_frame, text="Gerar PDF", command=self.gerar_pdf).pack(side='right', padx=5)
+        
+        btn_frame = ttk.Frame(right_column); btn_frame.grid(row=5, column=0, sticky='ew', pady=10)
+        ttk.Button(btn_frame, text="Limpar", command=self.limpar_campos).pack(side='left', expand=True)
+        ttk.Button(btn_frame, text="Gerar PDF", command=self.gerar_pdf).pack(side='right', expand=True, padx=5)
+        ttk.Button(btn_frame, text="Salvar", command=self.salvar_cadastro).pack(side='right', expand=True)
 
     def coletar_dados(self):
         dados = {}
@@ -269,7 +326,6 @@ class AppCadastro(tk.Tk):
         try:
             c = canvas.Canvas(nome_arquivo, pagesize=A4); largura, altura = A4
             
-            # --- CORREÇÃO APLICADA AQUI ---
             MARGEM_X = 2*cm; MARGEM_Y_SUPERIOR = 27.5*cm; MARGEM_INFERIOR = 2.5*cm
             LARGURA_UTIL = largura - 2*MARGEM_X
             ESPACAMENTO_LINHA, ESPACAMENTO_SECAO = 0.6*cm, 1*cm
@@ -302,13 +358,11 @@ class AppCadastro(tk.Tk):
                 if y_atual - altura_p < MARGEM_INFERIOR: c.showPage(); y_atual = MARGEM_Y_SUPERIOR; desenha_titulo_secao("Continuação da Ficha")
                 y_atual -= altura_p; p.drawOn(c, MARGEM_X, y_atual); y_atual -= ESPACAMENTO_LINHA
             
-            # --- INÍCIO DO DESENHO DO PDF ---
             try: c.drawImage("logo.png", MARGEM_X, y_atual-1.2*cm, width=4*cm, height=2.5*cm, preserveAspectRatio=True, anchor='n')
             except: c.drawString(MARGEM_X, y_atual-0.5*cm, "[Logo]")
             c.setFont("Helvetica-Bold", 18); c.drawCentredString(largura/2, y_atual, "FICHA DE INSCRIÇÃO"); y_atual -= 0.5*cm
             c.line(MARGEM_X, y_atual, LARGURA_UTIL + MARGEM_X, y_atual)
             
-            # --- SEÇÕES COMPLETAS DO PDF ---
             desenha_titulo_secao("Ficha de Inscrição")
             desenha_campo("Código", "codigo"); desenha_campo("Data da Inscrição", "data_inscricao", x_offset=8.5*cm); y_atual -= ESPACAMENTO_LINHA
             desenha_campo("Nome Completo", "nome_completo"); y_atual -= ESPACAMENTO_LINHA
